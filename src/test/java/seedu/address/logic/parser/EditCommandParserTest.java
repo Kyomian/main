@@ -2,6 +2,7 @@ package seedu.address.logic.parser;
 
 import static seedu.address.commons.core.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
 import static seedu.address.logic.logictestutil.TaskTestConstants.DATE_TIME_DESC_CS2010_QUIZ;
+import static seedu.address.logic.logictestutil.TaskTestConstants.DATE_TIME_DESC_MA2108_HOMEWORK;
 import static seedu.address.logic.logictestutil.TaskTestConstants.INVALID_TASK_DATE_TIME_DESC;
 import static seedu.address.logic.logictestutil.TaskTestConstants.INVALID_TASK_NAME_DESC;
 import static seedu.address.logic.logictestutil.TaskTestConstants.INVALID_TASK_REMARK_DESC;
@@ -18,6 +19,7 @@ import static seedu.address.logic.logictestutil.TaskTestConstants.VALID_NAME_MA2
 import static seedu.address.logic.logictestutil.TaskTestConstants.VALID_REMARK_CS2010_QUIZ;
 import static seedu.address.logic.logictestutil.TaskTestConstants.VALID_REMARK_MA2108_HOMEWORK;
 import static seedu.address.logic.logictestutil.TaskTestConstants.VALID_TAG_CS2010;
+import static seedu.address.logic.logictestutil.TaskTestConstants.VALID_TAG_MA2108;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 import static seedu.address.logic.parser.CommandParserTestUtil.assertParseFailure;
 import static seedu.address.logic.parser.CommandParserTestUtil.assertParseSuccess;
@@ -36,6 +38,7 @@ import seedu.address.model.activity.Remark;
 import seedu.address.model.tag.Tag;
 import seedu.address.testutil.EditTaskDescriptorBuilder;
 
+//@@author YuanQLLer
 public class EditCommandParserTest {
 
     private static final String TAG_EMPTY = " " + PREFIX_TAG;
@@ -174,15 +177,16 @@ public class EditCommandParserTest {
         expectedCommand = new EditCommand(targetIndex, descriptor);
         assertParseSuccess(parser, userInput, expectedCommand);
     }
-/*
+
     @Test
     public void parse_multipleRepeatedFields_acceptsLast() {
         Index targetIndex = INDEX_FIRST_ACTIVITY;
-        String userInput = targetIndex.getOneBased()  + DATE_TIME_DESC_MA2108_HOMEWORK
-                + ADDRESS_DESC_MA2108_HOMEWORK + EMAIL_DESC_MA2108_HOMEWORK + TAG_DESC_FRIEND
-                + DATE_TIME_DESC_MA2108_HOMEWORK + ADDRESS_DESC_MA2108_HOMEWORK + EMAIL_DESC_MA2108_HOMEWORK
-                + TAG_DESC_FRIEND + DATE_TIME_DESC_CS2010_QUIZ + ADDRESS_DESC_CS2010_QUIZ
-                + EMAIL_DESC_CS2010_QUIZ + TAG_DESC_HUSBAND;
+        String userInput = PREFIX_TASK + " " + targetIndex.getOneBased()  + DATE_TIME_DESC_CS2010_QUIZ
+                + REMARK_DESC_MA2108_HOMEWORK + DATE_TIME_DESC_MA2108_HOMEWORK
+                + DATE_TIME_DESC_MA2108_HOMEWORK + REMARK_DESC_MA2108_HOMEWORK
+                + DATE_TIME_DESC_MA2108_HOMEWORK
+                + TAG_DESC_MA2108 + DATE_TIME_DESC_CS2010_QUIZ + REMARK_DESC_CS2010_QUIZ
+                + DATE_TIME_DESC_CS2010_QUIZ + TAG_DESC_CS2010;
 
         EditCommand.EditActivityDescriptor descriptor = new EditTaskDescriptorBuilder()
                 .withDateTime(VALID_DATE_TIME_CS2010_QUIZ).withRemark(VALID_REMARK_CS2010_QUIZ)
@@ -191,7 +195,7 @@ public class EditCommandParserTest {
 
         assertParseSuccess(parser, userInput, expectedCommand);
     }
-*/
+
     @Test
     public void parse_invalidValueFollowedByValidValue_success() {
         // no other valid values specified

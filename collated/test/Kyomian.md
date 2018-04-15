@@ -1,21 +1,66 @@
 # Kyomian
-###### \java\seedu\address\logic\commands\CommandTestUtil.java
+###### \java\seedu\address\logic\commands\ClearCommandTest.java
 ``` java
-    public static final String VALID_TAG_URGENT = "Urgent";
+public class ClearCommandTest {
 
-```
-###### \java\seedu\address\logic\commands\CommandTestUtil.java
-``` java
-    public static final String TAG_DESC_URGENT = " " + PREFIX_TAG + VALID_TAG_URGENT;
+    @Test
+    public void clearAll_emptyDeskBoard_success() {
+        Model model = new ModelManager();
+        assertCommandSuccess(prepareClearAllCommand(model), model, ClearCommand.MESSAGE_SUCCESS, model);
+    }
 
-    public static final String INVALID_TASK_NAME_DESC = " " + PREFIX_NAME + "CS2106 Assignment&"; // '&' not allowed
-    public static final String INVALID_TASK_DATE_TIME_DESC = " " + PREFIX_DATE_TIME + "2018-03-04 17:00";
-    public static final String INVALID_TASK_REMARK_DESC = " " + PREFIX_REMARK + "$"; // '$' not allowed
-    public static final String INVALID_TASK_TAG_DESC = " " + PREFIX_TAG + "CS2106*"; // '*' not allowed in tags
+    @Test
+    public void clearAllTasks_emptyDeskBoard_success() {
+        Model model = new ModelManager();
+        assertCommandSuccess(prepareClearTasksCommand(model), model, ClearCommand.MESSAGE_CLEAR_TASK_SUCCESS, model);
+    }
 
-    // ============================= EVENT =============================================
-    //TODO: Tedious
+    @Test
+    public void clearAll_nonEmptyDeskBoard_success() {
+        Model model = new ModelManager(getTypicalDeskBoard(), new UserPrefs());
+        assertCommandSuccess(prepareClearAllCommand(model), model, ClearCommand.MESSAGE_SUCCESS, model);
+    }
 
+    @Test
+    public void clearAllTasks_nonEmptyDeskBoard_success() {
+        Model model = new ModelManager(getTypicalDeskBoard(), new UserPrefs());
+        assertCommandSuccess(prepareClearTasksCommand(model), model, ClearCommand.MESSAGE_CLEAR_TASK_SUCCESS, model);
+    }
+
+    @Test
+    public void clearAllEvents_nonEmptyDeskBoard_success() {
+        Model model = new ModelManager(getTypicalDeskBoard(), new UserPrefs());
+        assertCommandSuccess(prepareClearEventsCommand(model), model, ClearCommand.MESSAGE_CLEAR_EVENT_SUCCESS, model);
+    }
+
+    /**
+     * Generates a new {@code ClearCommand} which upon execution,
+     * clears all the content in {@code model}.
+     */
+    private ClearCommand prepareClearAllCommand(Model model) {
+        ClearCommand command = new ClearCommand("");
+        command.setData(model, new CommandHistory(), new UndoRedoStack());
+        return command;
+    }
+
+    /**
+     * Generates a new {@code ClearCommand} to clear all tasks in {@code model}.
+     */
+    private ClearCommand prepareClearTasksCommand(Model model) {
+        ClearCommand command = new ClearCommand("task");
+        command.setData(model, new CommandHistory(), new UndoRedoStack());
+        return command;
+    }
+
+    /**
+     * Generates a new {@code ClearCommand} to clear all events in {@code model}.
+     */
+    private ClearCommand prepareClearEventsCommand(Model model) {
+        ClearCommand command = new ClearCommand("event");
+        command.setData(model, new CommandHistory(), new UndoRedoStack());
+        return command;
+    }
+}
 ```
 ###### \java\seedu\address\logic\commands\CommandTestUtil.java
 ``` java
@@ -137,7 +182,7 @@ public class EventCommandTest {
     /**
      * Generates a new EventCommand with the details of the given event.
      */
-    private EventCommand getEventCommandForGivenEvent(Event event, Model model) {
+    EventCommand getEventCommandForGivenEvent(Event event, Model model) {
         EventCommand command = new EventCommand(event);
         command.setData(model, new CommandHistory(), new UndoRedoStack());
         return command;
@@ -149,6 +194,11 @@ public class EventCommandTest {
     private class ModelStub implements Model {
         @Override
         public void addActivity(Activity activity) throws DuplicateActivityException {
+            fail("This method should not be called.");
+        }
+
+        @Override
+        public void addActivities(ReadOnlyDeskBoard deskBoard) {
             fail("This method should not be called.");
         }
 
@@ -169,6 +219,11 @@ public class EventCommandTest {
         }
 
         @Override
+        public void clearActivities(String activityTypeToClear) {
+            fail("This method should not be called.");
+        }
+
+        @Override
         public void updateActivity(Activity target, Activity editedActivity)
                 throws DuplicateActivityException {
             fail("This method should not be called.");
@@ -180,6 +235,70 @@ public class EventCommandTest {
             return null;
         }
 
+```
+###### \java\seedu\address\logic\commands\HelpCommandTest.java
+``` java
+    @Test
+    public void execute_helpForHelp_success() {
+        HelpCommand command = new HelpCommand("help");
+        assertCommandSuccess(command, HelpCommand.MESSAGE_USAGE);
+    }
+
+    @Test
+    public void execute_helpForMan_success() {
+        HelpCommand command = new HelpCommand("man");
+        assertCommandSuccess(command, HelpCommand.MESSAGE_USAGE);
+    }
+
+    @Test
+    public void execute_helpForList_success() {
+        HelpCommand command = new HelpCommand("list");
+        assertCommandSuccess(command, ListCommand.MESSAGE_USAGE);
+
+        command = new HelpCommand("ls");
+        assertCommandSuccess(command, ListCommand.MESSAGE_USAGE);
+    }
+
+    @Test
+    public void execute_helpForOverdue_success() {
+        HelpCommand command = new HelpCommand("overdue");
+        assertCommandSuccess(command, OverdueCommand.MESSAGE_USAGE);
+    }
+
+    @Test
+    public void execute_helpForClear_success() {
+        HelpCommand command = new HelpCommand("clear");
+        assertCommandSuccess(command, ClearCommand.MESSAGE_USAGE);
+
+        command = new HelpCommand("c");
+        assertCommandSuccess(command, ClearCommand.MESSAGE_USAGE);
+    }
+
+    @Test
+    public void execute_helpForUndo_success() {
+        HelpCommand command = new HelpCommand("undo");
+        assertCommandSuccess(command, UndoCommand.MESSAGE_USAGE);
+
+        command = new HelpCommand("u");
+        assertCommandSuccess(command, UndoCommand.MESSAGE_USAGE);
+    }
+
+    @Test
+    public void execute_helpForRedo_success() {
+        HelpCommand command = new HelpCommand("redo");
+        assertCommandSuccess(command, RedoCommand.MESSAGE_USAGE);
+
+        command = new HelpCommand("r");
+        assertCommandSuccess(command, RedoCommand.MESSAGE_USAGE);
+    }
+
+    @Test
+    public void execute_invalidArgs_throwsCommandException()   {
+        HelpCommand command = new HelpCommand("hello");
+        assertCommandFailure(command, HelpCommand.MESSAGE_USAGE);
+    }
+
+}
 ```
 ###### \java\seedu\address\logic\commands\RemoveCommandTest.java
 ``` java
@@ -399,7 +518,7 @@ public class TaskCommandTest {
     /**
      * Generates a new TaskCommand with the details of the given task.
      */
-    private TaskCommand getTaskCommandForGivenTask(Task task, Model model) {
+    TaskCommand getTaskCommandForGivenTask(Task task, Model model) {
         TaskCommand command = new TaskCommand(task);
         command.setData(model, new CommandHistory(), new UndoRedoStack());
         return command;
@@ -411,6 +530,11 @@ public class TaskCommandTest {
     private class ModelStub implements Model {
         @Override
         public void addActivity(Activity activity) throws DuplicateActivityException {
+            fail("This method should not be called.");
+        }
+
+        @Override
+        public void addActivities(ReadOnlyDeskBoard deskBoard) {
             fail("This method should not be called.");
         }
 
@@ -431,6 +555,11 @@ public class TaskCommandTest {
         }
 
         @Override
+        public void clearActivities(String activityTypeToClear) {
+            fail("This method should not be called.");
+        }
+
+        @Override
         public void updateActivity(Activity target, Activity editedActivity)
                 throws DuplicateActivityException {
             fail("This method should not be called.");
@@ -442,6 +571,74 @@ public class TaskCommandTest {
             return null;
         }
 
+```
+###### \java\seedu\address\logic\logictestutil\EventTestConstants.java
+``` java
+/**
+ * Constants for event object.
+ */
+public class EventTestConstants {
+
+    public static final String VALID_NAME_CCA = "CCA";
+    public static final String VALID_NAME_CAMP = "Orientation Camp";
+    public static final String VALID_START_DATETIME_CCA = "15/5/2018 17:00";
+    public static final String VALID_START_DATETIME_CAMP = "1/8/2018 8:00";
+    public static final String VALID_END_DATETIME_CCA = "15/5/2018 21:00";
+    public static final String VALID_END_DATETIME_CAMP = "8/8/2018 17:00";
+    public static final String VALID_LOCATION_CCA = "NUS Utown";
+    public static final String VALID_LOCATION_CAMP = "NUS School of Computing";
+    public static final String VALID_REMARK_CCA = "Bring flute";
+    public static final String VALID_REMARK_CAMP = "Arrive earlier for briefing";
+    public static final String VALID_TAG_CCA = "Band";
+    public static final String VALID_TAG_CAMP = "Orientation";
+    public static final String VALID_TAG_IMPORTANT = "Important";
+
+    public static final String NAME_DESC_CCA = " " + PREFIX_NAME + VALID_NAME_CCA;
+    public static final String NAME_DESC_CAMP = " " + PREFIX_NAME + VALID_NAME_CAMP;
+    public static final String START_DATETIME_DESC_CCA = " " + PREFIX_START_DATETIME
+            + VALID_START_DATETIME_CCA;
+    public static final String START_DATETIME_DESC_CAMP = " " + PREFIX_START_DATETIME
+            + VALID_START_DATETIME_CAMP;
+    public static final String END_DATETIME_DESC_CCA = " " + PREFIX_END_DATETIME
+            + VALID_END_DATETIME_CCA;
+    public static final String END_DATETIME_DESC_CAMP = " " + PREFIX_END_DATETIME
+            + VALID_END_DATETIME_CAMP;
+    public static final String LOCATION_DESC_CCA = " " + PREFIX_LOCATION + VALID_LOCATION_CCA;
+    public static final String LOCATION_DESC_CAMP = " " + PREFIX_LOCATION + VALID_LOCATION_CAMP;
+    public static final String REMARK_DESC_CCA = " " + PREFIX_REMARK + VALID_REMARK_CCA;
+    public static final String REMARK_DESC_CAMP = " " + PREFIX_REMARK + VALID_REMARK_CAMP;
+    public static final String TAG_DESC_CCA = " " + PREFIX_TAG + VALID_TAG_CCA;
+    public static final String TAG_DESC_CAMP = " " + PREFIX_TAG + VALID_TAG_CAMP;
+    public static final String TAG_DESC_IMPORTANT = " " + PREFIX_TAG + VALID_TAG_IMPORTANT;
+
+    public static final String AFTEREND_START_DATETIME_CCA = "16/5/2018 8:00";
+    public static final String AFTEREND_START_DATETIME_DESC_CCA = " " + PREFIX_START_DATETIME
+            + AFTEREND_START_DATETIME_CCA;
+
+    public static final String INVALID_EVENT_NAME_DESC = " " + PREFIX_NAME + "Orbital&"; // '&' not allowed
+    public static final String INVALID_EVENT_START_DATETIME_DESC = " " + PREFIX_START_DATETIME + "2018-03-04 17:00";
+    public static final String INVALID_EVENT_END_DATETIME_DESC = " " + PREFIX_END_DATETIME + "2018-03-10 17:00";
+    public static final String INVALID_EVENT_LOCATION_DESC = " " + PREFIX_LOCATION + ""; // '' not allowed
+    // whitespace in front not allowed
+
+    public static final String INVALID_EVENT_REMARK_DESC = " " + PREFIX_REMARK + ""; // '' not allowed
+    public static final String INVALID_EVENT_TAG_DESC = " " + PREFIX_TAG + "Important*"; // '*' not allowed in tags
+}
+```
+###### \java\seedu\address\logic\logictestutil\TaskTestConstants.java
+``` java
+    public static final String VALID_TAG_URGENT = "Urgent";
+
+```
+###### \java\seedu\address\logic\logictestutil\TaskTestConstants.java
+``` java
+    public static final String TAG_DESC_URGENT = " " + PREFIX_TAG + VALID_TAG_URGENT;
+
+    public static final String INVALID_TASK_NAME_DESC = " " + PREFIX_NAME + "CS2106 Assignment&"; // '&' not allowed
+    public static final String INVALID_TASK_DATE_TIME_DESC = " " + PREFIX_DATE_TIME + "2018-03-04 17:00";
+    public static final String INVALID_TASK_REMARK_DESC = " " + PREFIX_REMARK + ""; // '' not allowed
+    public static final String INVALID_TASK_TAG_DESC = " " + PREFIX_TAG + "CS2106*"; // '*' not allowed in tags
+}
 ```
 ###### \java\seedu\address\logic\parser\DeskBoardParserTest.java
 ``` java
@@ -460,10 +657,212 @@ public class DeskBoardParserTest {
     }
 
 ```
+###### \java\seedu\address\logic\parser\DeskBoardParserTest.java
+``` java
+    @Test
+    public void parseCommand_remove() throws Exception {
+        assertTrue(parser.parseCommand(RemoveCommand.COMMAND_WORD + " task "
+                + INDEX_FIRST_ACTIVITY.getOneBased()) instanceof RemoveCommand);
+        assertTrue(parser.parseCommand(RemoveCommand.COMMAND_WORD + " event "
+                + INDEX_FIRST_ACTIVITY.getOneBased()) instanceof RemoveCommand);
+        assertTrue(parser.parseCommand(RemoveCommand.COMMAND_ALIAS + " task "
+                + INDEX_FIRST_ACTIVITY.getOneBased()) instanceof RemoveCommand);
+        assertTrue(parser.parseCommand(RemoveCommand.COMMAND_ALIAS + " event "
+                + INDEX_FIRST_ACTIVITY.getOneBased()) instanceof RemoveCommand);
+    }
+
+
+//    public void parseCommand_edit() throws Exception {
+//        Person person = new PersonBuilder().build();
+//        EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder(person).build();
+//        EditCommand command = (EditCommand) parser.parseCommand(EditCommand.COMMAND_WORD + " "
+//                + INDEX_FIRST_PERSON.getOneBased() + " " + PersonUtil.getPersonDetails(person));
+//        assertEquals(new EditCommand(INDEX_FIRST_PERSON, descriptor), command);
+//    }
+//
+//    public void parseCommand_find() throws Exception {
+//        List<String> keywords = Arrays.asList("foo", "bar", "baz");
+//        FindCommand command = (FindCommand) parser.parseCommand(
+//                FindCommand.COMMAND_WORD + " " + keywords.stream().collect(Collectors.joining(" ")));
+//        assertEquals(new FindCommand(new NameContainsKeywordsPredicate(keywords)), command);
+//    }
+
+```
 ###### \java\seedu\address\logic\parser\EventCommandParserTest.java
 ``` java
 public class EventCommandParserTest {
-   //TODO: Tedious
+    private EventCommandParser parser = new EventCommandParser();
+
+    @Test
+    public void parse_allFieldsPresent_success() {
+        Event expectedEvent = new EventBuilder().withName(VALID_NAME_CCA).withStartDateTime(VALID_START_DATETIME_CCA)
+                .withEndDateTime(VALID_END_DATETIME_CCA).withLocation(VALID_LOCATION_CCA).withRemark(VALID_REMARK_CCA)
+                .withTags(VALID_TAG_CCA).build();
+
+        // whitespace only preamble
+        assertParseSuccess(parser, PREAMBLE_WHITESPACE + NAME_DESC_CCA + START_DATETIME_DESC_CCA
+                + END_DATETIME_DESC_CCA + LOCATION_DESC_CCA + REMARK_DESC_CCA + TAG_DESC_CCA,
+                new EventCommand(expectedEvent));
+
+        // multiple names - last name accepted
+        assertParseSuccess(parser, NAME_DESC_CAMP + NAME_DESC_CCA + START_DATETIME_DESC_CCA
+                        + END_DATETIME_DESC_CCA + LOCATION_DESC_CCA + REMARK_DESC_CCA + TAG_DESC_CCA,
+                new EventCommand(expectedEvent));
+
+
+        // multiple remarks - last remark accepted
+        assertParseSuccess(parser, NAME_DESC_CCA + START_DATETIME_DESC_CCA
+                        + END_DATETIME_DESC_CCA + LOCATION_DESC_CCA
+                        + REMARK_DESC_CAMP + REMARK_DESC_CCA + TAG_DESC_CCA,
+                new EventCommand(expectedEvent));
+
+        // multiple tags - all accepted
+        Event expectedEventMultipleTags = new EventBuilder().withName(VALID_NAME_CCA)
+                .withStartDateTime(VALID_START_DATETIME_CCA).withEndDateTime(VALID_END_DATETIME_CCA)
+                .withLocation(VALID_LOCATION_CCA).withRemark(VALID_REMARK_CCA)
+                .withTags(VALID_TAG_CCA, VALID_TAG_IMPORTANT).build();
+        assertParseSuccess(parser, NAME_DESC_CCA + START_DATETIME_DESC_CCA
+                        + END_DATETIME_DESC_CCA + LOCATION_DESC_CCA
+                        + REMARK_DESC_CCA + TAG_DESC_CCA + TAG_DESC_IMPORTANT,
+                new EventCommand(expectedEventMultipleTags));
+    }
+
+    @Test
+    public void parse_optionalLocationMissing_success() {
+        Event expectedEvent = new EventBuilder().withName(VALID_NAME_CCA).withStartDateTime(VALID_START_DATETIME_CCA)
+                .withEndDateTime(VALID_END_DATETIME_CCA).withLocation().withRemark(VALID_REMARK_CCA)
+                .withTags(VALID_TAG_CCA).build();
+        assertParseSuccess(parser, NAME_DESC_CCA + START_DATETIME_DESC_CCA + END_DATETIME_DESC_CCA
+                        + REMARK_DESC_CCA + TAG_DESC_CCA,
+                new EventCommand(expectedEvent));
+    }
+
+    @Test
+    public void parse_optionalRemarkMissing_success() {
+        Event expectedEvent = new EventBuilder().withName(VALID_NAME_CCA).withStartDateTime(VALID_START_DATETIME_CCA)
+                .withEndDateTime(VALID_END_DATETIME_CCA).withLocation(VALID_LOCATION_CCA).withRemark()
+                .withTags(VALID_TAG_CCA).build();
+        assertParseSuccess(parser, NAME_DESC_CCA + START_DATETIME_DESC_CCA + END_DATETIME_DESC_CCA
+                        + LOCATION_DESC_CCA + TAG_DESC_CCA,
+                new EventCommand(expectedEvent));
+    }
+
+    @Test
+    public void parse_optionalTagsMissing_success() {
+        Event expectedEvent = new EventBuilder().withName(VALID_NAME_CCA).withStartDateTime(VALID_START_DATETIME_CCA)
+                .withEndDateTime(VALID_END_DATETIME_CCA).withLocation(VALID_LOCATION_CCA).withRemark(VALID_REMARK_CCA)
+                .withTags().build();
+        assertParseSuccess(parser, NAME_DESC_CCA + START_DATETIME_DESC_CCA + END_DATETIME_DESC_CCA
+                + LOCATION_DESC_CCA + REMARK_DESC_CCA, new EventCommand(expectedEvent));
+    }
+
+    @Test
+    public void parse_compulsoryFieldMissing_failure() {
+        String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, EventCommand.MESSAGE_USAGE);
+
+        // missing name prefix
+        assertParseFailure(parser, VALID_NAME_CCA + START_DATETIME_DESC_CCA + END_DATETIME_DESC_CCA
+                + LOCATION_DESC_CCA + REMARK_DESC_CCA, expectedMessage);
+
+        // missing start datetime prefix
+        assertParseFailure(parser, NAME_DESC_CCA + VALID_START_DATETIME_CCA + END_DATETIME_DESC_CCA
+                + LOCATION_DESC_CCA + REMARK_DESC_CCA, expectedMessage);
+
+        // missing end datetime prefix
+        assertParseFailure(parser, NAME_DESC_CCA + START_DATETIME_DESC_CCA + VALID_END_DATETIME_CCA
+                + LOCATION_DESC_CCA + REMARK_DESC_CCA, expectedMessage);
+    }
+
+    @Test
+    public void parse_startDateTimeAfterEndDateTime_failure() {
+        Event expectedEvent = new EventBuilder().withName(VALID_NAME_CCA)
+                .withStartDateTime(AFTEREND_START_DATETIME_CCA)
+                .withEndDateTime(VALID_END_DATETIME_CCA)
+                .withLocation(VALID_LOCATION_CCA).withRemark(VALID_REMARK_CCA)
+                .withTags(VALID_TAG_CCA).build();
+
+        assertParseFailure(parser, NAME_DESC_CCA + AFTEREND_START_DATETIME_DESC_CCA + END_DATETIME_DESC_CCA
+                + LOCATION_DESC_CCA + REMARK_DESC_CCA + TAG_DESC_CCA, MESSAGE_INVALID_TIME_RANGE);
+    }
+
+    @Test
+    public void parse_invalidValue_failure() {
+        // invalid name
+        assertParseFailure(parser, INVALID_EVENT_NAME_DESC + START_DATETIME_DESC_CCA
+                + END_DATETIME_DESC_CCA + LOCATION_DESC_CCA + REMARK_DESC_CCA + TAG_DESC_CCA,
+                Name.MESSAGE_NAME_CONSTRAINTS);
+
+        // invalid start datetime
+        assertParseFailure(parser, NAME_DESC_CCA + INVALID_EVENT_START_DATETIME_DESC
+                        + END_DATETIME_DESC_CCA + LOCATION_DESC_CCA + REMARK_DESC_CCA + TAG_DESC_CCA,
+                DateTime.MESSAGE_DATETIME_CONSTRAINTS);
+
+        // invalid end datetime
+        assertParseFailure(parser, NAME_DESC_CCA + START_DATETIME_DESC_CCA
+                        + INVALID_EVENT_END_DATETIME_DESC + LOCATION_DESC_CCA + REMARK_DESC_CCA + TAG_DESC_CCA,
+                DateTime.MESSAGE_DATETIME_CONSTRAINTS);
+
+        // invalid location
+        assertParseFailure(parser, NAME_DESC_CCA + START_DATETIME_DESC_CCA
+                + END_DATETIME_DESC_CCA + INVALID_EVENT_LOCATION_DESC + REMARK_DESC_CCA + TAG_DESC_CCA,
+                Location.MESSAGE_LOCATION_CONSTRAINTS);
+
+        // invalid remark
+        assertParseFailure(parser, NAME_DESC_CCA + START_DATETIME_DESC_CCA
+                + END_DATETIME_DESC_CCA + LOCATION_DESC_CCA + INVALID_EVENT_REMARK_DESC + TAG_DESC_CCA,
+                Remark.MESSAGE_REMARK_CONSTRAINTS);
+
+        // invalid tag
+        assertParseFailure(parser, NAME_DESC_CCA + START_DATETIME_DESC_CCA
+                + END_DATETIME_DESC_CCA + LOCATION_DESC_CCA + REMARK_DESC_CCA + INVALID_EVENT_TAG_DESC,
+                Tag.MESSAGE_TAG_CONSTRAINTS);
+
+        // two invalid values, only first invalid value reported
+        assertParseFailure(parser, INVALID_EVENT_NAME_DESC + INVALID_EVENT_START_DATETIME_DESC
+                        + END_DATETIME_DESC_CCA + LOCATION_DESC_CCA + REMARK_DESC_CCA + TAG_DESC_CCA,
+                Name.MESSAGE_NAME_CONSTRAINTS);
+
+        // non-empty preamble
+        assertParseFailure(parser, PREAMBLE_NON_EMPTY + NAME_DESC_CCA + START_DATETIME_DESC_CCA
+                        + END_DATETIME_DESC_CCA + LOCATION_DESC_CCA + REMARK_DESC_CCA + TAG_DESC_CCA,
+                String.format(MESSAGE_INVALID_COMMAND_FORMAT, EventCommand.MESSAGE_USAGE));
+    }
+
+}
+```
+###### \java\seedu\address\logic\parser\ParserUtilTest.java
+``` java
+    @Test
+    public void parseFilePath_null_throwsNullPointerException() {
+        Assert.assertThrows(NullPointerException.class, () -> ParserUtil.parseFilePath((String) null));
+        Assert.assertThrows(NullPointerException.class, () -> ParserUtil.parseFilePath((Optional<String>) null));
+    }
+
+    @Test
+    public void parseFilePath_invalidValue_throwsIllegalValueException() {
+        Assert.assertThrows(IllegalValueException.class, () -> ParserUtil.parseFilePath(INVALID_FILEPATH));
+        Assert.assertThrows(IllegalValueException.class, () -> ParserUtil.parseFilePath(Optional.of(INVALID_FILEPATH)));
+    }
+
+    @Test
+    public void parseFilePath_optionalEmpty_returnsOptionalEmpty() throws Exception {
+        assertFalse(ParserUtil.parseFilePath(Optional.empty()).isPresent());
+    }
+
+    @Test
+    public void parseFilePath_validValueWithoutWhitespace_returnsFilePath() throws Exception {
+        FilePath expectedFilePath = new FilePath(VALID_FILEPATH);
+        assertEquals(expectedFilePath, ParserUtil.parseFilePath(VALID_FILEPATH));
+        assertEquals(Optional.of(expectedFilePath), ParserUtil.parseFilePath(Optional.of(VALID_FILEPATH)));
+    }
+
+    @Test
+    public void parseFilePath_validValueWithWhitespace_returnsTrimmedFilePath() throws Exception {
+        String filePathWithWhitespace = WHITESPACE + VALID_FILEPATH + WHITESPACE;
+        FilePath expectedFilePath = new FilePath(VALID_FILEPATH);
+        assertEquals(expectedFilePath, ParserUtil.parseFilePath(filePathWithWhitespace));
+        assertEquals(Optional.of(expectedFilePath), ParserUtil.parseFilePath(Optional.of(filePathWithWhitespace)));
+    }
 }
 ```
 ###### \java\seedu\address\logic\parser\RemoveCommandParserTest.java
@@ -530,18 +929,20 @@ public class TaskCommandParserTest {
     }
 
 
-    //TODO: Is Remark optional?
+    @Test
     public void parse_optionalRemarkMissing_success() {
-
+        Task expectedTask = new TaskBuilder().withName(VALID_NAME_CS2010_QUIZ).withDateTime(VALID_DATE_TIME_CS2010_QUIZ)
+                .withRemark().withTags(VALID_TAG_CS2010).build();
+        assertParseSuccess(parser, NAME_DESC_CS2010_QUIZ + DATE_TIME_DESC_CS2010_QUIZ + TAG_DESC_CS2010,
+                new TaskCommand(expectedTask));
     }
 
     @Test
     public void parse_optionalTagsMissing_success() {
-        Task expectedTask = new TaskBuilder().withName(VALID_NAME_MA2108_HOMEWORK)
-                .withDateTime(VALID_DATE_TIME_MA2108_HOMEWORK)
-                .withRemark(VALID_REMARK_MA2108_HOMEWORK).withTags().build();
-        assertParseSuccess(parser, NAME_DESC_MA2108_HOMEWORK + DATE_TIME_DESC_MA2108_HOMEWORK
-                        + REMARK_DESC_MA2108_HOMEWORK, new TaskCommand(expectedTask));
+        Task expectedTask = new TaskBuilder().withName(VALID_NAME_CS2010_QUIZ).withDateTime(VALID_DATE_TIME_CS2010_QUIZ)
+                .withRemark(VALID_REMARK_CS2010_QUIZ).withTags().build();
+        assertParseSuccess(parser, NAME_DESC_CS2010_QUIZ + DATE_TIME_DESC_CS2010_QUIZ
+                        + REMARK_DESC_CS2010_QUIZ, new TaskCommand(expectedTask));
     }
 
     @Test
@@ -555,14 +956,6 @@ public class TaskCommandParserTest {
         // missing date time prefix
         assertParseFailure(parser, NAME_DESC_CS2010_QUIZ + VALID_DATE_TIME_CS2010_QUIZ
                         + REMARK_DESC_CS2010_QUIZ, expectedMessage);
-
-//        // missing remark prefix
-//        assertParseFailure(parser, NAME_DESC_CS2010_QUIZ + DATE_TIME_DESC_CS2010_QUIZ + VALID_EMAIL_BOB + ,
-//                expectedMessage);
-
-//        // all prefixes missing
-//        assertParseFailure(parser, VALID_NAME_CS2010_QUIZ + VALID_DATE_TIME_CS2010_QUIZ + VALID_EMAIL_BOB
-//                + VALID_ADDRESS_BOB, expectedMessage);
     }
 
     @Test
@@ -571,22 +964,20 @@ public class TaskCommandParserTest {
         assertParseFailure(parser, INVALID_TASK_NAME_DESC + DATE_TIME_DESC_CS2010_QUIZ
                 + REMARK_DESC_CS2010_QUIZ + TAG_DESC_CS2010, Name.MESSAGE_NAME_CONSTRAINTS);
 
-//        TODO: Got to do with DateTime Regex in Model
-//        // invalid date time
-//        assertParseFailure(parser, NAME_DESC_CS2010_QUIZ + INVALID_TASK_DATE_TIME_DESC
-//                + REMARK_DESC_CS2010_QUIZ + TAG_DESC_CS2010, DateTime.MESSAGE_DATETIME_CONSTRAINTS);
+        // invalid date time
+        assertParseFailure(parser, NAME_DESC_CS2010_QUIZ + INVALID_TASK_DATE_TIME_DESC
+                + REMARK_DESC_CS2010_QUIZ + TAG_DESC_CS2010, DateTime.MESSAGE_DATETIME_CONSTRAINTS);
 
-//        TODO: Not sure myself
-//        // invalid remark
-//        assertParseFailure(parser, NAME_DESC_CS2010_QUIZ + DATE_TIME_DESC_CS2010_QUIZ
-//                + INVALID_TASK_REMARK_DESC + TAG_DESC_CS2010, Remark.MESSAGE_REMARK_CONSTRAINTS);
+        // invalid remark
+        assertParseFailure(parser, NAME_DESC_CS2010_QUIZ + DATE_TIME_DESC_CS2010_QUIZ
+                + INVALID_TASK_REMARK_DESC + TAG_DESC_CS2010, Remark.MESSAGE_REMARK_CONSTRAINTS);
 
         // invalid tag
         assertParseFailure(parser, NAME_DESC_CS2010_QUIZ + DATE_TIME_DESC_CS2010_QUIZ
                 + REMARK_DESC_CS2010_QUIZ + INVALID_TASK_TAG_DESC, Tag.MESSAGE_TAG_CONSTRAINTS);
 
         // two invalid values, only first invalid value reported
-        assertParseFailure(parser, INVALID_TASK_NAME_DESC + DATE_TIME_DESC_CS2010_QUIZ
+        assertParseFailure(parser, INVALID_TASK_NAME_DESC + INVALID_TASK_DATE_TIME_DESC
                         + REMARK_DESC_CS2010_QUIZ,
                 Name.MESSAGE_NAME_CONSTRAINTS);
 
@@ -648,6 +1039,27 @@ public class DateTimeTest {
 ```
 ###### \java\seedu\address\testutil\EventBuilder.java
 ``` java
+    /**
+     * Overloaded method.
+     * Sets the {@code Remark} of the {@code Activity} to null.
+     */
+    public EventBuilder withRemark() {
+        this.remark = null;
+        return this;
+    }
+
+```
+###### \java\seedu\address\testutil\EventBuilder.java
+``` java
+    /**
+     * Overloaded method.
+     * Sets the {@code Location} of the {@code Activity} to null.
+     */
+    public EventBuilder withLocation() {
+        this.location = null;
+        return this;
+    }
+
     public Event build() {
         return new Event(name, startDateTime, endDateTime, location, remark, tags);
     }
@@ -686,6 +1098,18 @@ public class EventUtil {
 ```
 ###### \java\seedu\address\testutil\TaskBuilder.java
 ``` java
+    /**
+     * Overloaded method.
+     * Sets the {@code Remark} of the {@code Activity} to null.
+     */
+    public TaskBuilder withRemark() {
+        this.remark = null;
+        return this;
+    }
+
+```
+###### \java\seedu\address\testutil\TaskBuilder.java
+``` java
     public Task build() {
         return new Task(name, dateTime, remark, tags);
     }
@@ -716,6 +1140,25 @@ public class TaskUtil {
             s -> sb.append(PREFIX_TAG + s.tagName + " ")
         );
         return sb.toString();
+    }
+}
+```
+###### \java\seedu\address\testutil\TypicalActivities.java
+``` java
+    /**
+     * Returns an {@code ObservableList} of typical tasks.
+     */
+    public static ObservableList<Activity> getTypicalTasks() {
+        List<Activity> taskList = Arrays.asList(ASSIGNMENT1, ASSIGNMENT2, QUIZ);
+        return FXCollections.observableList(taskList);
+    }
+
+    /**
+     * Returns an {@code ObservableList} of typical events.
+     */
+    public static ObservableList<Activity> getTypicalEvents() {
+        List<Activity> eventList = Arrays.asList(CCA, CIP, EXAM1, IFG);
+        return FXCollections.observableList(eventList);
     }
 }
 ```

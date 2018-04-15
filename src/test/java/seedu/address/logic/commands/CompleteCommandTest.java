@@ -52,7 +52,6 @@ public class CompleteCommandTest {
     }
 
     @Test
-    //TODO
     public void execute_invalidIndexFilteredList_throwsCommandException() {
         showActivityAtIndex(model, INDEX_FIRST_ACTIVITY);
 

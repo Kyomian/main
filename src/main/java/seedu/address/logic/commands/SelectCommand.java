@@ -36,6 +36,7 @@ public class SelectCommand extends Command {
         this.type = type;
     }
 
+    //@@author YuanQLLer
     @Override
     public CommandResult execute() throws CommandException {
         CommandResult result = null;

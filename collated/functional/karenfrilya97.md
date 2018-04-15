@@ -1,81 +1,232 @@
 # karenfrilya97
-###### \java\seedu\address\model\activity\UniqueActivityList.java
+###### \java\seedu\address\logic\commands\Command.java
 ``` java
-    private static Comparator<Activity> dateTimeComparator = new Comparator<Activity>() {
-        public int compare (Activity o1, Activity o2) {
-            DateTime dt1 = o1.getDateTime();
-            DateTime dt2 = o2.getDateTime();
-            return dt1.getLocalDateTime().compareTo(dt2.getLocalDateTime());
-        }
-    };
+    /**
+     * Provides any needed dependencies to the command.
+     */
+    public void setData(Model model, Storage storage, CommandHistory history, UndoRedoStack undoRedoStack) {
+        this.setData(model, history, undoRedoStack);
+        this.storage = storage;
+    }
+}
+```
+###### \java\seedu\address\logic\commands\ExportCommand.java
+``` java
+/**
+ * Exports Desk Board data into an xml file in desired directory.
+ */
+public class ExportCommand extends Command {
 
-    private final ObservableList<Activity> internalList = FXCollections.observableArrayList();
+    public static final String COMMAND_WORD = "export";
+
+    public static final String MESSAGE_USAGE = COMMAND_WORD
+            + ": Exports desk board data into an xml file in the specified directory. "
+            + "Parameters: "
+            + PREFIX_FILE_PATH + "FILE_PATH\n"
+            + "Example: " + COMMAND_WORD + " "
+            + PREFIX_FILE_PATH + "C:\\data\\deskBoard.xml";
+
+    public static final String MESSAGE_SUCCESS = "Data exported to: %1$s";
+    public static final String MESSAGE_FILE_EXISTS = "File %s already exists";
+
+    private final FilePath filePath;
 
     /**
-     * Returns true if the list contains an equivalent activity as the given argument.
+     * Creates an ExportCommandParser to import data from the specified {@code filePath}.
      */
-    public boolean contains(Activity toCheck) {
-        requireNonNull(toCheck);
-        return internalList.contains(toCheck);
+    public ExportCommand(FilePath filePath) {
+        requireNonNull(filePath);
+        this.filePath = filePath;
     }
 
+    @Override
+    public CommandResult execute() throws CommandException {
+        requireNonNull(model);
+        requireNonNull(storage);
+
+        if (FileUtil.isFileExists(new File(filePath.value))) {
+            throw new CommandException(String.format(MESSAGE_FILE_EXISTS, filePath.value));
+        }
+
+        try {
+            ReadOnlyDeskBoard deskBoard = model.getDeskBoard();
+            storage.saveDeskBoard(deskBoard, filePath.value);
+            return new CommandResult(String.format(MESSAGE_SUCCESS, filePath.value));
+        } catch (IOException ioe) {
+            throw new CommandException(ioe.getMessage());
+        }
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other == this // short circuit if same object
+                || (other instanceof ExportCommand // instanceof handles nulls
+                && this.filePath.equals(((ExportCommand) other).filePath)); // state check
+    }
+}
+```
+###### \java\seedu\address\logic\commands\ImportCommand.java
+``` java
+/**
+ * Imports desk board data from a given xml file.
+ */
+public class ImportCommand extends UndoableCommand {
+
+    public static final String COMMAND_WORD = "import";
+
+    public static final String MESSAGE_USAGE = COMMAND_WORD + ": Imports desk board data from a given xml file. "
+            + "Parameters: "
+            + PREFIX_FILE_PATH + "FILE PATH\n"
+            + "Example: " + COMMAND_WORD + " "
+            + PREFIX_FILE_PATH + "C:\\data\\deskBoard.xml";
+
+    public static final String MESSAGE_SUCCESS = "Data imported from: %1$s";
+    public static final String MESSAGE_FILE_NOT_FOUND = "Desk board file %s not found";
+    public static final String MESSAGE_ILLEGAL_VALUES_IN_FILE = "Illegal values found in file: %s";
+
+    private final FilePath filePath;
 
     /**
-     * Adds a activity to the list.
-     * If activity is a task or an event, is added to its respective list.
-     *
-     * @throws DuplicateActivityException if the activity to add is a duplicate of an existing activity in the list.
+     * Creates an ImportCommand to import data from the specified {@code filePath}.
      */
-    public void add(Activity toAdd) throws DuplicateActivityException {
-        requireNonNull(toAdd);
-        if (contains(toAdd)) {
-            throw new DuplicateActivityException();
+    public ImportCommand(FilePath filePath) {
+        requireNonNull(filePath);
+        this.filePath = filePath;
+    }
+
+    @Override
+    public CommandResult executeUndoableCommand() throws CommandException {
+        requireNonNull(model);
+        requireNonNull(storage);
+
+        try {
+            ReadOnlyDeskBoard toImport = storage.readDeskBoard(filePath.value)
+                    .orElseThrow(() -> new CommandException(String.format(MESSAGE_FILE_NOT_FOUND, filePath)));
+
+            model.addActivities(toImport);
+            return new CommandResult(String.format(MESSAGE_SUCCESS, filePath));
+        } catch (IOException ioe) {
+            throw new CommandException(String.format(MESSAGE_FILE_NOT_FOUND, filePath));
+        } catch (DataConversionException dce) {
+            throw new CommandException(String.format(MESSAGE_ILLEGAL_VALUES_IN_FILE, filePath.value));
         }
-        internalList.add(toAdd);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other == this // short circuit if same object
+                || (other instanceof ImportCommand // instanceof handles nulls
+                && filePath.equals(((ImportCommand) other).filePath));
+    }
+}
+```
+###### \java\seedu\address\logic\parser\ExportCommandParser.java
+``` java
+/**
+ * Parses input arguments and creates a new ExportCommand object
+ */
+public class ExportCommandParser implements Parser<ExportCommand> {
+
+    /**
+     * Parses the given {@code String} of arguments in the context of the ExportCommand
+     * and returns an ExportCommand object for execution.
+     * @throws ParseException if the user input does not conform the expected format.
+     */
+    public ExportCommand parse(String args) throws ParseException {
+        ArgumentMultimap argMultimap =
+                ArgumentTokenizer.tokenize(args, PREFIX_FILE_PATH);
+
+        if (!arePrefixesPresent(argMultimap, PREFIX_FILE_PATH)
+                || !argMultimap.getPreamble().isEmpty()) {
+            throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, ExportCommand.MESSAGE_USAGE));
+        }
+
+        try {
+            FilePath filePath = ParserUtil.parseFilePath(argMultimap.getValue(PREFIX_FILE_PATH)).get();
+            return new ExportCommand(filePath);
+        } catch (IllegalValueException ive) {
+            throw new ParseException(ive.getMessage(), ive);
+        }
+    }
+
+    /**
+     * Returns true if none of the prefixes contains empty {@code Optional} values in the given
+     * {@code ArgumentMultimap}.
+     */
+    private static boolean arePrefixesPresent(ArgumentMultimap argumentMultimap, Prefix... prefixes) {
+        return Stream.of(prefixes).allMatch(prefix -> argumentMultimap.getValue(prefix).isPresent());
+    }
+}
+```
+###### \java\seedu\address\logic\parser\ImportCommandParser.java
+``` java
+/**
+ * Parses input arguments and creates a new ImportCommand object
+ */
+public class ImportCommandParser implements Parser<ImportCommand> {
+
+    /**
+     * Parses the given {@code String} of arguments in the context of the ImportCommand
+     * and returns an ImportCommand object for execution.
+     * @throws ParseException if the user input does not conform the expected format.
+     */
+    public ImportCommand parse(String args) throws ParseException {
+        ArgumentMultimap argMultimap =
+                ArgumentTokenizer.tokenize(args, PREFIX_FILE_PATH);
+
+        if (!arePrefixesPresent(argMultimap, PREFIX_FILE_PATH)
+                || !argMultimap.getPreamble().isEmpty()) {
+            throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, ImportCommand.MESSAGE_USAGE));
+        }
+
+        try {
+            FilePath filePath = ParserUtil.parseFilePath(argMultimap.getValue(PREFIX_FILE_PATH)).get();
+            return new ImportCommand(filePath);
+        } catch (IllegalValueException ive) {
+            throw new ParseException(ive.getMessage(), ive);
+        }
+    }
+
+    /**
+     * Returns true if none of the prefixes contains empty {@code Optional} values in the given
+     * {@code ArgumentMultimap}.
+     */
+    private static boolean arePrefixesPresent(ArgumentMultimap argumentMultimap, Prefix... prefixes) {
+        return Stream.of(prefixes).allMatch(prefix -> argumentMultimap.getValue(prefix).isPresent());
+    }
+
+}
+```
+###### \java\seedu\address\logic\parser\ParserUtil.java
+``` java
+    /**
+     * Parses a {@code String filePath} into a {@code FilePath}.
+     * Leading and trailing whitespaces will be trimmed.
+     *
+     * @throws IllegalValueException if the given {@code filePath} is invalid.
+     */
+    public static FilePath parseFilePath(String filePath) throws IllegalValueException {
+        requireNonNull(filePath);
+        String trimmedFilePath = filePath.trim();
+        if (!FilePath.isValidFilePath(trimmedFilePath)) {
+            throw new IllegalValueException(FilePath.MESSAGE_FILE_PATH_CONSTRAINTS);
+        }
+        return new FilePath(trimmedFilePath);
+    }
+
+    /**
+     * Parses an {@code Optional<String> filePath} into an {@code Optional<FilePath>} if {@code filePath} is present.
+     * See header comment of this class regarding the use of {@code Optional} parameters.
+     */
+    public static Optional<FilePath> parseFilePath(Optional<String> filePath) throws IllegalValueException {
+        requireNonNull(filePath);
+        return filePath.isPresent() ? Optional.of(parseFilePath(filePath.get())) : Optional.empty();
+    }
+}
 ```
 ###### \java\seedu\address\model\activity\UniqueActivityList.java
 ``` java
         Collections.sort(internalList, dateTimeComparator);
-    }
-
-    /**
-     * Replaces the activity {@code target} in the list with {@code editedActivity}.
-     * If activity is a task or an event, edited in its respective list.
-     *
-     * @throws DuplicateActivityException if the replacement is equivalent to another existing activity in the list.
-     * @throws ActivityNotFoundException if {@code target} could not be found in the list.
-     */
-    public void setActivity(Activity target, Activity editedActivity)
-            throws DuplicateActivityException, ActivityNotFoundException {
-        requireNonNull(editedActivity);
-
-        int index = internalList.indexOf(target);
-        int taskIndex;
-        int eventIndex;
-
-        if (index == -1) {
-            throw new ActivityNotFoundException();
-        }
-
-        if (!target.equals(editedActivity) && internalList.contains(editedActivity)) {
-            throw new DuplicateActivityException();
-        }
-
-        internalList.set(index, editedActivity);
-
-    }
-
-    public void setActivity(UniqueActivityList replacement) {
-        this.internalList.setAll(replacement.internalList);
-    }
-
-    public void setActivity(List<Activity> activities) throws DuplicateActivityException {
-        requireAllNonNull(activities);
-        final UniqueActivityList replacement = new UniqueActivityList();
-        for (final Activity activity : activities) {
-            replacement.add(activity);
-        }
-        setActivity(replacement);
     }
 
     /**
@@ -88,6 +239,121 @@
         final boolean activityFoundAndDeleted = internalList.remove(toRemove);
         if (!activityFoundAndDeleted) {
             throw new ActivityNotFoundException();
+        } else  {
+            internalList.remove(toRemove);
+        }
+        return activityFoundAndDeleted;
+    }
+
+```
+###### \java\seedu\address\model\DeskBoard.java
+``` java
+    /**
+     * Adds all activities from UniqueActivityList {@code activities} to the desk board.
+     * Also checks each new activity's tags and updates {@link #tags} with any new tags found,
+     * and updates the Tag objects in the activity to point to those in {@link #tags}.
+     *
+     * If an equivalent activity already exists, that activity will be ignored.
+     */
+    public void addActivities(List<Activity> toAdd) {
+        for (Activity activity : toAdd) {
+            activity = syncWithMasterTagList(activity);
+            try {
+                activities.add(activity);
+            } catch (DuplicateActivityException e) {
+                // Ignore duplicate activity.
+            }
+        }
+    }
+
+```
+###### \java\seedu\address\model\FilePath.java
+``` java
+/**
+ * Represents a Desk Board's file path.
+ * Guarantees: immutable; is valid as declared in {@link #isValidFilePath(String)}
+ */
+public class FilePath {
+
+    public static final String MESSAGE_FILE_PATH_CONSTRAINTS =
+            "Desk Board file path should end with '.xml'.";
+
+    public static final String FILE_PATH_VALIDATION_REGEX = ".+" + ".xml";
+
+    public final String value;
+
+    /**
+     * Constructs a {@code FilePath}.
+     *
+     * @param filePath A valid file path.
+     */
+    public FilePath (String filePath) {
+        requireNonNull(filePath);
+        checkArgument(isValidFilePath(filePath), MESSAGE_FILE_PATH_CONSTRAINTS);
+        this.value = filePath;
+    }
+
+    /**
+     * Returns true if a given string is a valid Desk Board file path.
+     */
+    public static boolean isValidFilePath(String filePath) {
+        return filePath.matches(FILE_PATH_VALIDATION_REGEX);
+    }
+
+    @Override
+    public String toString() {
+        return value;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other == this // short circuit if same object
+                || (other instanceof FilePath // instanceof handles nulls
+                && this.value.equals(((FilePath) other).value)); // state check
+    }
+
+    @Override
+    public int hashCode() {
+        return value.hashCode();
+    }
+}
+```
+###### \java\seedu\address\model\ModelManager.java
+``` java
+    /** Adds all activities in the given desk board, except for those already found in the existing desk board*/
+    public synchronized void addActivities(ReadOnlyDeskBoard otherDeskBoard) {
+        deskBoard.addActivities(otherDeskBoard.getActivityList());
+        updateFilteredActivityList(PREDICATE_SHOW_ALL_ACTIVITY);
+        indicateDeskBoardChanged();
+    }
+
+```
+###### \java\seedu\address\model\util\DateTimeComparator.java
+``` java
+/**
+ * Comparator class that compares Activity based on dateTime attributes.
+ * For Event objects, this class only compares based on the startDateTime,
+ * and does not take into account the endDateTime.
+ */
+public class DateTimeComparator implements Comparator<Activity> {
+
+    public DateTimeComparator () {
+    }
+
+    /**
+     * Compares two activities
+     * @param o1 and
+     * @param o2,
+     * @return a negative integer, zero, or a positive integer
+     * if the first activity's dateTime is earlier than, equal to or later than
+     * the second activity's dateTime respectively.
+     */
+    public int compare(Activity o1, Activity o2) {
+        DateTime dt1 = o1.getDateTime();
+        DateTime dt2 = o2.getDateTime();
+        return dt1.getLocalDateTime().compareTo(dt2.getLocalDateTime());
+    }
+}
 ```
 ###### \java\seedu\address\storage\XmlAdaptedActivity.java
 ``` java
@@ -102,10 +368,10 @@ public abstract class XmlAdaptedActivity {
     protected String name;
     @XmlElement(required = true)
     protected String dateTime;
-    @XmlElement(required = true)
+    @XmlElement
     protected String remark;
     @XmlElement
-    protected boolean iscompleted;
+    protected boolean isCompleted;
     @XmlElement
     protected List<XmlAdaptedTag> tagged = new ArrayList<>();
 
@@ -125,7 +391,7 @@ public abstract class XmlAdaptedActivity {
         if (tagged != null) {
             this.tagged = new ArrayList<>(tagged);
         }
-        iscompleted = false;
+        isCompleted = false;
     }
 
     /**
@@ -136,12 +402,14 @@ public abstract class XmlAdaptedActivity {
     public XmlAdaptedActivity(Activity source) {
         name = source.getName().fullName;
         dateTime = source.getDateTime().toString();
-        remark = source.getRemark().value;
+        if (source.getRemark() != null) {
+            remark = source.getRemark().value;
+        }
         tagged = new ArrayList<>();
         for (Tag tag : source.getTags()) {
             tagged.add(new XmlAdaptedTag(tag));
         }
-        iscompleted = source.isCompleted();
+        isCompleted = source.isCompleted();
     }
 
     /**
@@ -168,7 +436,7 @@ public abstract class XmlAdaptedActivity {
                 && Objects.equals(dateTime, otherActivity.dateTime)
                 && Objects.equals(remark, otherActivity.remark)
                 && tagged.equals(otherActivity.tagged)
-                && this.iscompleted == otherActivity.iscompleted;
+                && this.isCompleted == otherActivity.isCompleted;
     }
 }
 ```
@@ -210,7 +478,9 @@ public class XmlAdaptedEvent extends XmlAdaptedActivity {
     public XmlAdaptedEvent(Event source) {
         super((Activity) source);
         endDateTime = source.getEndDateTime().toString();
-        location = source.getLocation().toString();
+        if (source.getLocation() != null) {
+            location = source.getLocation().toString();
+        }
     }
 
     /**
@@ -220,9 +490,9 @@ public class XmlAdaptedEvent extends XmlAdaptedActivity {
      */
     @Override
     public Event toModelType() throws IllegalValueException {
-        final List<Tag> personTags = new ArrayList<>();
+        final List<Tag> activityTags = new ArrayList<>();
         for (XmlAdaptedTag tag : tagged) {
-            personTags.add(tag.toModelType());
+            activityTags.add(tag.toModelType());
         }
 
         if (this.name == null) {
@@ -251,19 +521,26 @@ public class XmlAdaptedEvent extends XmlAdaptedActivity {
             throw new IllegalValueException(DateTime.MESSAGE_DATETIME_CONSTRAINTS);
         }
         final DateTime endDateTime = new DateTime(this.endDateTime);
-
-        if (!Location.isValidLocation(this.location)) {
+        final Location location;
+        if (this.location == null) {
+            location = null;
+        } else if (!Location.isValidLocation(this.location)) {
             throw new IllegalValueException(Location.MESSAGE_LOCATION_CONSTRAINTS);
+        } else {
+            location = new Location(this.location);
         }
-        final Location location = new Location(this.location);
 
-        if (!Remark.isValidRemark(this.remark)) {
+        final Remark remark;
+        if (this.remark == null) {
+            remark = null;
+        } else if (!Remark.isValidRemark(this.remark)) {
             throw new IllegalValueException(Remark.MESSAGE_REMARK_CONSTRAINTS);
+        } else {
+            remark = new Remark(this.remark);
         }
-        final Remark remark = new Remark(this.remark);
 
-        final Set<Tag> tags = new HashSet<>(personTags);
-        return new Event(name, startDateTime, endDateTime, location, remark, tags, this.iscompleted);
+        final Set<Tag> tags = new HashSet<>(activityTags);
+        return new Event(name, startDateTime, endDateTime, location, remark, tags, this.isCompleted);
     }
 
     @Override
@@ -325,9 +602,9 @@ public class XmlAdaptedTask extends XmlAdaptedActivity {
      * @throws IllegalValueException if there were any data constraints violated in the adapted task
      */
     public Task toModelType() throws IllegalValueException {
-        final List<Tag> personTags = new ArrayList<>();
+        final List<Tag> activityTags = new ArrayList<>();
         for (XmlAdaptedTag tag : tagged) {
-            personTags.add(tag.toModelType());
+            activityTags.add(tag.toModelType());
         }
 
         if (this.name == null) {
@@ -348,14 +625,18 @@ public class XmlAdaptedTask extends XmlAdaptedActivity {
         }
         final DateTime dateTime = new DateTime(this.dateTime);
 
-        if (!Remark.isValidRemark(this.remark)) {
+        final Remark remark;
+        if (this.remark == null) {
+            remark = null;
+        } else if (!Remark.isValidRemark(this.remark)) {
             throw new IllegalValueException(Remark.MESSAGE_REMARK_CONSTRAINTS);
+        } else {
+            remark = new Remark(this.remark);
         }
-        final Remark remark = new Remark(this.remark);
 
-        final Set<Tag> tags = new HashSet<>(personTags);
+        final Set<Tag> tags = new HashSet<>(activityTags);
 
-        return new Task(name, dateTime, remark, tags, this.iscompleted);
+        return new Task(name, dateTime, remark, tags, this.isCompleted);
     }
 
     @Override
@@ -373,7 +654,7 @@ public class XmlAdaptedTask extends XmlAdaptedActivity {
 ###### \java\seedu\address\storage\XmlSerializableDeskBoard.java
 ``` java
 /**
- * An Immutable DeskBoard that is serializable to XML format
+ * An immutable {@link DeskBoard} that is serializable to XML format
  */
 @XmlRootElement(name = "deskBoard")
 public class XmlSerializableDeskBoard {

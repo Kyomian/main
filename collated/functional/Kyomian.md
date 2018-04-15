@@ -1,4 +1,45 @@
 # Kyomian
+###### \java\seedu\address\logic\commands\ClearCommand.java
+``` java
+/**
+ * Clears the deskboard.
+ */
+public class ClearCommand extends UndoableCommand {
+
+    public static final String COMMAND_WORD = "clear";
+    public static final String COMMAND_ALIAS = "c";
+    public static final String MESSAGE_SUCCESS = "Deskboard has been cleared!";
+    public static final String MESSAGE_CLEAR_TASK_SUCCESS = "Tasks have been cleared!";
+    public static final String MESSAGE_CLEAR_EVENT_SUCCESS = "Events have been cleared!";
+
+    public static final String MESSAGE_USAGE = COMMAND_WORD
+            + ": Clears task panel, event panel or both task and event panel.\n"
+            + "Parameters: [task/event]\n"
+            + "Example: " + COMMAND_WORD + " OR "
+            + COMMAND_ALIAS + " event";
+
+    private final String activityOption;
+
+    public ClearCommand(String activityOption) {
+        this.activityOption = activityOption;
+    }
+
+    @Override
+    public CommandResult executeUndoableCommand() {
+        requireNonNull(model);
+        if (activityOption.equals("")) {
+            model.resetData(new DeskBoard());
+            return new CommandResult(MESSAGE_SUCCESS);
+        } else if (activityOption.equals("task")) {
+            model.clearActivities("TASK");
+            return new CommandResult(MESSAGE_CLEAR_TASK_SUCCESS);
+        } else {
+            model.clearActivities("EVENT");
+            return new CommandResult(MESSAGE_CLEAR_EVENT_SUCCESS);
+        }
+    }
+}
+```
 ###### \java\seedu\address\logic\commands\EventCommand.java
 ``` java
 /**
@@ -57,6 +98,29 @@ public class EventCommand extends UndoableCommand {
     }
 }
 ```
+###### \java\seedu\address\logic\commands\OverdueCommand.java
+``` java
+/**
+ * Lists all overdue tasks
+ */
+public class OverdueCommand extends Command {
+
+    public static final String COMMAND_WORD = "overdue";
+
+    public static final String MESSAGE_USAGE = COMMAND_WORD
+            + ": Shows a list of tasks that remain uncompleted after their respective due dates.";
+
+    public static final String SHOWN_OVERDUE_MESSAGE = "Number of overdue tasks: %d";
+
+    @Override
+    public CommandResult execute() {
+        int numOverdueTasks = OverdueChecker.getNumOverdueTasks();
+        return new CommandResult(String.format(SHOWN_OVERDUE_MESSAGE, numOverdueTasks));
+    }
+
+
+}
+```
 ###### \java\seedu\address\logic\commands\RemoveCommand.java
 ``` java
 /**
@@ -64,12 +128,14 @@ public class EventCommand extends UndoableCommand {
  */
 public class RemoveCommand extends UndoableCommand {
 
-    public static final String COMMAND_WORD = "rm";
+    public static final String COMMAND_WORD = "remove";
+    public static final String COMMAND_ALIAS = "rm";
+
     public static final String MESSAGE_USAGE = COMMAND_WORD
             + ": Removes task/event identified by the index number in the last displayed task/event listing.\n"
             + "Parameters: task/event INDEX (INDEX must be a positive integer)\n"
             + "Example: " + COMMAND_WORD + " task 1" + " OR "
-            + COMMAND_WORD + " event 1";
+            + COMMAND_ALIAS + " event 1";
 
     public static final String MESSAGE_REMOVE_TASK_SUCCESS = "Removed task: %1$s";
     public static final String MESSAGE_REMOVE_EVENT_SUCCESS = "Removed event: %1$s";
@@ -180,6 +246,192 @@ public class TaskCommand extends UndoableCommand {
     }
 }
 ```
+###### \java\seedu\address\logic\commands\util\OverdueCheckerUtil.java
+``` java
+/**
+ * A utility class that tags task as overdue and event as finished.
+ */
+public class OverdueCheckerUtil {
+
+    /**
+     * Tags task as overdue.
+     */
+    public static void markAsOverdue(Task task, Model model)
+            throws ActivityNotFoundException, DuplicateActivityException {
+        Task newTask = computeNewTask(task);
+        model.updateActivity(task, newTask);
+    }
+
+    /**
+     * Tags event as finished.
+     */
+    public static void markAsFinished(Event event, Model model)
+            throws ActivityNotFoundException, DuplicateActivityException {
+        Event newEvent = computeNewEvent(event);
+        model.updateActivity(event, newEvent);
+    }
+
+    /**
+     * {@code Private} method that creates a new task with "Overdue" tag.
+     */
+    private static Task computeNewTask(Task task) {
+        Name name = task.getName();
+        DateTime dateTime = task.getDueDateTime();
+        Remark remark = task.getRemark();
+        Boolean isCompleted = task.isCompleted();
+
+        HashSet<Tag> tags = new HashSet<>(task.getTags()); // copy constructor
+        tags.add(new Tag("Overdue"));
+
+        return new Task(name, dateTime, remark, tags, isCompleted);
+    }
+
+    /**
+     * {@code Private} method that creates a new event with "Finished" tag.
+     */
+    private static Event computeNewEvent(Event event) {
+        Name name = event.getName();
+        DateTime startDateTime = event.getStartDateTime();
+        DateTime endDateTime = event.getEndDateTime();
+        Location location = event.getLocation();
+        Remark remark = event.getRemark();
+        Boolean isCompleted = event.isCompleted();
+
+        HashSet<Tag> tags = new HashSet<>(event.getTags());
+        tags.add(new Tag("Finished"));
+
+        return new Event(name, startDateTime, endDateTime, location, remark, tags, isCompleted);
+    }
+}
+```
+###### \java\seedu\address\logic\DateTimeScheduler.java
+``` java
+/**
+ * A scheduler that runs every 30 seconds to check if tasks and events have passed their
+ * due dates and end dates respectively.
+ */
+public class DateTimeScheduler {
+
+    private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+
+    /**
+     * Initialises the scheduler.
+     */
+    public static void initialise(Model model) {
+        OverdueChecker checker = new OverdueChecker(model);
+        executor.scheduleWithFixedDelay(checker, 0, 30, TimeUnit.SECONDS);
+    }
+}
+```
+###### \java\seedu\address\logic\OverdueChecker.java
+``` java
+/**
+ * A class that checks if tasks and events have passed their due dates and end dates
+ * respectively.
+ *
+ * A task that has passed its due date is tagged as overdue.
+ * A completed task will not be tagged as overdue, even though it has passed its due date.
+ * An event that has passed its end date is tagged as finished.
+ *
+ * This class also records the number of tasks tagged "Overdue".
+ */
+public class OverdueChecker implements Runnable {
+
+    private static int numOverdueTasks;
+    private Model model;
+    private ObservableList<Activity> taskList;
+    private ObservableList<Activity> eventList;
+
+    // Constructor
+    public OverdueChecker(Model model) {
+        this.model = model;
+        taskList = model.getFilteredTaskList();
+        eventList = model.getFilteredEventList();
+    }
+
+    /**
+     * The run method of OverdueChecker runnable
+     */
+    public void run() {
+        numOverdueTasks = 0;
+        LocalDateTime currentDateTime = LocalDateTime.now();
+
+        // Platform.runLater is needed as you cannot update UI components
+        // from a thread other than the JavaFx Application thread
+        Platform.runLater(() -> {
+            try {
+                markingAsOverdue(taskList, currentDateTime);
+                markingAsFinished(eventList, currentDateTime);
+            } catch (ActivityNotFoundException e) {
+                e.printStackTrace(); // impossible to reach here
+            } catch (DuplicateActivityException e) {
+                e.printStackTrace(); // impossible to reach here
+            }
+        });
+    }
+
+    /**
+     * Task that has passed its due date and is not yet completed
+     * is tagged as overdue.
+     */
+    private void markingAsOverdue(ObservableList<Activity> taskList, LocalDateTime currentDateTime)
+            throws ActivityNotFoundException, DuplicateActivityException {
+        for (int i = 0; i < taskList.size(); i++) {
+            Task task = (Task) taskList.get(i);
+            if (task.getDueDateTime().getLocalDateTime().isBefore(currentDateTime)
+                    && !task.isCompleted()) {
+                markAsOverdue(task, model);
+                numOverdueTasks++;
+            }
+        }
+    }
+
+    /**
+     * Event that has passed its end date is tagged automatically as finished.
+     */
+    private void markingAsFinished(ObservableList<Activity> eventList, LocalDateTime currentDateTime)
+            throws ActivityNotFoundException, DuplicateActivityException {
+        for (int i = 0; i < eventList.size(); i++) {
+            Event event = (Event) eventList.get(i);
+            if (event.getEndDateTime().getLocalDateTime().isBefore(currentDateTime)) {
+                markAsFinished(event, model);
+            }
+        }
+    }
+
+    public static int getNumOverdueTasks() {
+        return numOverdueTasks;
+    }
+}
+```
+###### \java\seedu\address\logic\parser\ClearCommandParser.java
+``` java
+/**
+ * Parses input arguments and creates a new ClearCommand object.
+ */
+public class ClearCommandParser implements Parser<ClearCommand> {
+
+    /**
+     * Parses the given {@code String} of arguments in the context of the ClearCommand
+     * and returns a ClearCommand object for execution.
+     * @throws ParseException if the user input does not conform the expected format
+     */
+    public ClearCommand parse(String args) throws ParseException {
+
+        args = args.trim();
+
+        if (!isValidActivityOption(args)) {
+            throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, ClearCommand.MESSAGE_USAGE));
+        }
+
+        return new ClearCommand(args);
+    }
+
+    private static boolean isValidActivityOption(String activityOption) {
+        return activityOption.equals("") || activityOption.equals("task") || activityOption.equals("event");
+    }
+}
+```
 ###### \java\seedu\address\logic\parser\CliSyntax.java
 ``` java
 /**
@@ -190,6 +442,7 @@ public class CliSyntax {
     /* Prefix definitions */
     public static final Prefix PREFIX_NAME = new Prefix("n/");
     public static final Prefix PREFIX_DATE_TIME = new Prefix("d/");
+    public static final Prefix PREFIX_FILE_PATH = new Prefix("f/");
     public static final Prefix PREFIX_REMARK = new Prefix("r/");
     public static final Prefix PREFIX_TAG = new Prefix("t/");
     public static final Prefix PREFIX_START_DATETIME = new Prefix("s/");
@@ -240,23 +493,23 @@ public class DeskBoardParser {
         case EventCommand.COMMAND_WORD:
             return new EventCommandParser().parse(arguments);
 
-        //case EditCommand.COMMAND_WORD:
-            //return new EditCommandParser().parse(arguments);
-
-        //case SelectCommand.COMMAND_WORD:
-            //return new SelectCommandParser().parse(arguments);
+        case EditCommand.COMMAND_WORD:
+            return new EditCommandParser().parse(arguments);
 
         case RemoveCommand.COMMAND_WORD:
             return new RemoveCommandParser().parse(arguments);
 
+        case RemoveCommand.COMMAND_ALIAS:
+            return new RemoveCommandParser().parse(arguments);
+
         case ClearCommand.COMMAND_WORD:
-            return new ClearCommand();
+            return new ClearCommandParser().parse(arguments);
 
         case ClearCommand.COMMAND_ALIAS:
-            return new ClearCommand();
+            return new ClearCommandParser().parse(arguments);
 
-        //case FindCommand.COMMAND_WORD:
-            //return new FindCommandParser().parse(arguments);
+        case FindCommand.COMMAND_WORD:
+            return new FindCommandParser().parse(arguments);
 
         case ListCommand.COMMAND_WORD:
             return new ListCommandParser().parse(arguments);
@@ -264,11 +517,11 @@ public class DeskBoardParser {
         case ListCommand.COMMAND_ALIAS:
             return new ListCommandParser().parse(arguments);
 
-        //case HistoryCommand.COMMAND_WORD:
-            //return new HistoryCommand();
+        case HistoryCommand.COMMAND_WORD:
+            return new HistoryCommand();
 
-        //case ExitCommand.COMMAND_WORD:
-            //return new ExitCommand();
+        case ExitCommand.COMMAND_WORD:
+            return new ExitCommand();
 
         case HelpCommand.COMMAND_WORD:
             return new HelpCommandParser().parse(arguments);
@@ -276,11 +529,29 @@ public class DeskBoardParser {
         case HelpCommand.COMMAND_ALIAS:
             return new HelpCommandParser().parse(arguments);
 
-        //case UndoCommand.COMMAND_WORD:
-            //return new UndoCommand();
+        case OverdueCommand.COMMAND_WORD:
+            return new OverdueCommand();
 
-        //case RedoCommand.COMMAND_WORD:
-            //return new RedoCommand();
+        case UndoCommand.COMMAND_WORD:
+            return new UndoCommand();
+
+        case UndoCommand.COMMAND_ALIAS:
+            return new UndoCommand();
+
+        case RedoCommand.COMMAND_WORD:
+            return new RedoCommand();
+
+        case RedoCommand.COMMAND_ALIAS:
+            return new RedoCommand();
+
+        case SelectCommand.COMMAND_WORD:
+            return new SelectCommandParser().parse(arguments);
+
+        case ImportCommand.COMMAND_WORD:
+            return new ImportCommandParser().parse(arguments);
+
+        case ExportCommand.COMMAND_WORD:
+            return new ExportCommandParser().parse(arguments);
 
         default:
             throw new ParseException(MESSAGE_UNKNOWN_COMMAND);
@@ -291,11 +562,13 @@ public class DeskBoardParser {
 ```
 ###### \java\seedu\address\logic\parser\EventCommandParser.java
 ``` java
-
 /**
  * Parses input arguments and creates a new EventCommand object
  */
 public class EventCommandParser implements Parser<EventCommand> {
+
+    public static final String MESSAGE_INVALID_TIME_RANGE = "Start Datetime cannot be after end Datetime";
+
     /**
      * Parses the given {@code String} of arguments in the context of the EventCommand
      * and returns a EventCommand object for execution.
@@ -315,11 +588,15 @@ public class EventCommandParser implements Parser<EventCommand> {
             Name name = ParserUtil.parseName(argMultimap.getValue(PREFIX_NAME)).get();
             DateTime startDateTime = ParserUtil.parseDateTime(argMultimap.getValue(PREFIX_START_DATETIME)).get();
             DateTime endDateTime = ParserUtil.parseDateTime(argMultimap.getValue(PREFIX_END_DATETIME)).get();
-            Location location = ParserUtil.parseLocation(argMultimap.getValue(PREFIX_LOCATION)).get();
-            Remark remark = ParserUtil.parseRemark(argMultimap.getValue(PREFIX_REMARK)).get();
+            Optional<Location> location = ParserUtil.parseLocation(argMultimap.getValue(PREFIX_LOCATION));
+            Optional<Remark> remark = ParserUtil.parseRemark(argMultimap.getValue(PREFIX_REMARK));
             Set<Tag> tagList = ParserUtil.parseTags(argMultimap.getAllValues(PREFIX_TAG));
 
-            Event event = new Event(name, startDateTime, endDateTime, location, remark, tagList);
+            isTimeRangeValid(startDateTime, endDateTime);
+
+            Event event = new Event(name, startDateTime, endDateTime,
+                    location.isPresent() ? location.get() : null,
+                    remark.isPresent() ? remark.get() : null, tagList);
 
             return new EventCommand(event);
         } catch (IllegalValueException ive) {
@@ -333,6 +610,15 @@ public class EventCommandParser implements Parser<EventCommand> {
      */
     private static boolean arePrefixesPresent(ArgumentMultimap argumentMultimap, Prefix... prefixes) {
         return Stream.of(prefixes).allMatch(prefix -> argumentMultimap.getValue(prefix).isPresent());
+    }
+
+    /**
+     * Throws {@code IllegalValueException} if start datetime is after end datetime.
+     */
+    private static void isTimeRangeValid(DateTime startDateTime, DateTime endDateTime) throws IllegalValueException {
+        if (startDateTime.getLocalDateTime().isAfter(endDateTime.getLocalDateTime())) {
+            throw new IllegalValueException(MESSAGE_INVALID_TIME_RANGE);
+        }
     }
 }
 ```
@@ -491,7 +777,6 @@ public class ParserUtil {
         return tagSet;
     }
 
-}
 ```
 ###### \java\seedu\address\logic\parser\RemoveCommandParser.java
 ``` java
@@ -553,10 +838,14 @@ public class TaskCommandParser implements Parser<TaskCommand> {
         try {
             Name name = ParserUtil.parseName(argMultimap.getValue(PREFIX_NAME)).get();
             DateTime datetime = ParserUtil.parseDateTime(argMultimap.getValue(PREFIX_DATE_TIME)).get();
-            Remark remark = ParserUtil.parseRemark(argMultimap.getValue(PREFIX_REMARK)).get();
+            Optional<Remark> optionalRemark = ParserUtil.parseRemark(argMultimap.getValue(PREFIX_REMARK));
             Set<Tag> tagList = ParserUtil.parseTags(argMultimap.getAllValues(PREFIX_TAG));
-
-            Task task = new Task(name, datetime, remark, tagList);
+            Task task;
+            if (optionalRemark.isPresent()) {
+                task = new Task(name, datetime, optionalRemark.get(), tagList);
+            } else {
+                task = new Task(name, datetime, null, tagList);
+            }
 
             return new TaskCommand(task);
         } catch (IllegalValueException ive) {
@@ -610,7 +899,6 @@ public class DateTime {
             LocalDateTime.parse(value, formatter);
             return true;
         } catch (DateTimeParseException dtpe) {
-            dtpe.printStackTrace();
             return false;
         }
     }
@@ -638,6 +926,113 @@ public class DateTime {
 
 }
 ```
+###### \java\seedu\address\model\activity\Task.java
+``` java
+    @Override
+    /**
+     * Gets a completely copy of task.
+     * Removes the overdue tag, if any.
+     */
+    public Activity getCompletedCopy() {
+        HashSet<Tag> tags = new HashSet<>(getTags()); // copy constructor
+        tags.remove(new Tag("Overdue"));
+        return new Task(getName(), getDueDateTime(), getRemark(), tags, true);
+    }
+}
+```
+###### \java\seedu\address\model\activity\UniqueActivityList.java
+``` java
+    /**
+     * Clears either all tasks in deskboard or all events.
+     * @param activityTypeToClear
+     */
+    public void clear(String activityTypeToClear) {
+        internalList.removeIf(activity ->
+            activity.getActivityType().equals(activityTypeToClear)
+        );
+    }
+
+    /**
+     * Returns the backing list as an unmodifiable {@code ObservableList}.
+     */
+    public ObservableList<Activity> internalListAsObservable() {
+        return FXCollections.unmodifiableObservableList(internalList);
+    }
+
+
+
+    @Override
+    public Iterator<Activity> iterator() {
+        return internalList.iterator();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other == this // short circuit if same object
+                || (other instanceof UniqueActivityList // instanceof handles nulls
+                        && this.internalList.equals(((UniqueActivityList) other).internalList));
+    }
+
+    @Override
+    public int hashCode() {
+        return internalList.hashCode();
+    }
+}
+```
+###### \java\seedu\address\model\DeskBoard.java
+``` java
+    /**
+     * Removes {@code key} from this {@code DeskBoard}.
+     * @throws ActivityNotFoundException if the {@code key} is not in this {@code DeskBoard}.
+     */
+    public boolean removeActivity(Activity key) throws ActivityNotFoundException {
+        if (activities.remove(key)) {
+            return true;
+        } else {
+            throw new ActivityNotFoundException();
+        }
+    }
+
+    public void clearActivities(String activityTypeToClear) {
+        activities.clear(activityTypeToClear);
+    }
+
+    //// tag-level operations
+
+```
+###### \java\seedu\address\model\Model.java
+``` java
+    /** Clear all tasks or all events */
+    void clearActivities(String activityTypeToClear);
+
+    /** Adds the given activity */
+    void addActivity(Activity activity) throws DuplicateActivityException;
+
+    void addActivities(ReadOnlyDeskBoard deskBoard);
+
+    /**
+     * Replaces the given activity {@code target} with {@code editedActivity}.
+     *
+     * @throws DuplicateActivityException if updating the activity's details causes the activity to be equivalent to
+     *      another existing activity in the list.
+     * @throws ActivityNotFoundException if {@code target} could not be found in the list.
+     */
+    void updateActivity(Activity target, Activity editedActivity)
+            throws DuplicateActivityException, ActivityNotFoundException;
+
+    /** Returns an unmodifiable view of the filtered activity list */
+    ObservableList<Activity> getFilteredActivityList();
+
+```
+###### \java\seedu\address\model\ModelManager.java
+``` java
+    @Override
+    public synchronized void clearActivities(String activityTypeToClear) {
+        deskBoard.clearActivities(activityTypeToClear);
+        indicateDeskBoardChanged();
+    }
+
+```
 ###### \java\seedu\address\ui\util\DateTimeUtil.java
 ``` java
 /**
@@ -652,7 +1047,7 @@ public class DateTimeUtil {
     /**
      * Formats DateTime of task as day, name of month, year, hours and minutes
      */
-    public static String getDisplayedDateTime(Task task) throws DateTimeException {
+    public static String getDisplayedDateTime(Task task) {
         DateTime dateTime = task.getDateTime();
         String displayedDateTime = displayFormatter.format(dateTime.getLocalDateTime());
         return displayedDateTime;
@@ -661,7 +1056,7 @@ public class DateTimeUtil {
     /**
      * Formats StartDateTime of event as day, name of month, year, hours and minutes
      */
-    public static String getDisplayedStartDateTime(Event event) throws DateTimeException {
+    public static String getDisplayedStartDateTime(Event event) {
         DateTime dateTime = event.getStartDateTime();
         String displayedDateTime = displayFormatter.format(dateTime.getLocalDateTime());
         return displayedDateTime;
@@ -670,7 +1065,7 @@ public class DateTimeUtil {
     /**
      * Formats EndDateTime of event as day, name of month, year, hours and minutes
      */
-    public static String getDisplayedEndDateTime(Event event) throws DateTimeException {
+    public static String getDisplayedEndDateTime(Event event) {
         DateTime dateTime = event.getEndDateTime();
         String displayedDateTime = displayFormatter.format(dateTime.getLocalDateTime());
         return displayedDateTime;

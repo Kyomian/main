@@ -88,49 +88,12 @@ public class EditCommandTest {
         assertCommandSuccess(editCommand, model, expectedMessage, expectedModel);
     }
 
-    //TODO: TEST
-    /**
-     * Test
-     */
-    public void execute_filteredList_success() throws Exception {
-        showActivityAtIndex(model, INDEX_FIRST_ACTIVITY);
 
-        Activity activityInFilteredList = model.getFilteredTaskList().get(INDEX_FIRST_ACTIVITY.getZeroBased());
-        Activity editedActivity = new TaskBuilder(activityInFilteredList).withName(VALID_NAME_CS2010_QUIZ).build();
-        EditCommand editCommand = prepareCommand(INDEX_FIRST_ACTIVITY,
-                new EditTaskDescriptorBuilder().withName(VALID_NAME_CS2010_QUIZ).build());
-
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_ACTIVITY_SUCCESS, editedActivity);
-
-        Model expectedModel = new ModelManager(new DeskBoard(model.getDeskBoard()), new UserPrefs());
-        expectedModel.updateActivity(model.getFilteredTaskList().get(0), editedActivity);
-
-        assertCommandSuccess(editCommand, model, expectedMessage, expectedModel);
-    }
-
-    //TODO: TEST
-    /**
-     * Test
-     */
+    @Test
     public void execute_duplicatePersonUnfilteredList_failure() {
-        Activity firstActivity = model.getFilteredActivityList().get(INDEX_FIRST_ACTIVITY.getZeroBased());
+        Activity firstActivity = model.getFilteredTaskList().get(INDEX_FIRST_ACTIVITY.getZeroBased());
         EditActivityDescriptor descriptor = new EditTaskDescriptorBuilder(firstActivity).build();
         EditCommand editCommand = prepareCommand(INDEX_SECOND_ACTIVITY, descriptor);
-
-        assertCommandFailure(editCommand, model, EditCommand.MESSAGE_DUPLICATE_ACTIVITY);
-    }
-
-    //TODO: TEST
-    /**
-     * Test
-     */
-    public void execute_duplicatePersonFilteredList_failure() {
-        showActivityAtIndex(model, INDEX_FIRST_ACTIVITY);
-
-        // edit activity in filtered list into a duplicate in address book
-        Activity activityInList = model.getDeskBoard().getActivityList().get(INDEX_SECOND_ACTIVITY.getZeroBased());
-        EditCommand editCommand = prepareCommand(INDEX_FIRST_ACTIVITY,
-                new EditTaskDescriptorBuilder(activityInList).build());
 
         assertCommandFailure(editCommand, model, EditCommand.MESSAGE_DUPLICATE_ACTIVITY);
     }

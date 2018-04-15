@@ -168,15 +168,15 @@ As such `edit event INDEX r/` would remove all the `tags` of the identified even
 ====
 // end::edit[]
 
-=== Listing uncompleted tasks and upcoming events: `ls` `[As of  v1.4]`
+=== Listing tasks and events: `ls` `[As of  v1.4]`
 
 Shows one or two lists of tasks and events in Desk Board as described below.
 
 *Format:*
 
-* `ls task`: shows only uncompleted tasks.
-* `ls event`: shows only upcoming events.
-* `ls`: shows both uncompleted tasks and upcoming events in 2 separate lists.
+* `ls task`: shows only tasks.
+* `ls event`: shows only events.
+* `ls`: shows both tasks and events in 2 separate lists.
 
 === Removing a task or event: `rm` `[As of  v1.4]`
 
@@ -197,11 +197,11 @@ Removes a task or event from Desk Board according to the following conditions:
 `rm task 2` +
 Removes the 2nd task in Desk Board.
 
-=== Completing a task: `complete task` or `com task` `[As of  v1.5]`
+=== Completing a task: `complete task` `[As of  v1.5]`
 
 Completes the task at the specified `INDEX` based on the most recent listing.
 
-*Format:* `complete task INDEX` or `com task INDEX`
+*Format:* `complete task INDEX`
 
 *Examples:*
 
@@ -209,15 +209,7 @@ Completes the task at the specified `INDEX` based on the most recent listing.
 `complete task 3` +
 Completes the 3rd task in Desk Board.
 
-* `ls task` +
-`com task 2` +
-Completes the 2nd task in Desk Board.
 
-=== Listing all completed tasks: `ls complete task` or `ls com task` `[Coming Soon in  v1.5]`
-
-Shows a list of all completed tasks in Desk Board. +
-
-*Format:* `ls complete task` or `ls com task`
 
 // tag::find[]
 === Finding task by name: `find task` `[As of v1.5]`
@@ -247,11 +239,19 @@ Finds all tasks and event with name containing either `CS2101` or `exam`.
 ====
 // end::find[]
 
-=== Shows overdue tasks: `overdue` `[Coming Soon in  v1.5]`
+=== Shows overdue tasks: `overdue` `[As of v1.5]`
 
 Shows a list of tasks that remain uncompleted after their respective due dates.
 
 *Format:* `overdue`
+
+=== Selecting a task or event: `select task` or `select event` `[As of  v1.5]`
+
+Select the task or event at the specified `INDEX` based on the most recent listing.
+
+*Format:* `select task INDEX` or `select event INDEX`
+
+
 
 === Listing entered commands : `history` `[Coming Soon in  v1.5]`
 
@@ -349,9 +349,11 @@ Exits the program.
 
 *Format:* `exit`
 
-=== Editing a task : `edit task` `[Coming Soon in v2.0]`
+=== Listing all completed tasks: `ls complete task` or `ls com task` `[Coming Soon in  v1.5]`
 
-=== Locating task by name: `find task` `[Coming Soon in v2.0]`
+Shows a list of all completed tasks in Desk Board. +
+
+*Format:* `ls complete task` or `ls com task`
 
 === Listing all past events: `ls past event` `[Coming Soon in v2.0]`
 
@@ -391,5 +393,7 @@ There is no need to save manually.
 |`redo`         |`r`        |`redo`                 |[[empty]]          |Reverses the most recent `undo` command
 |`remove event` |`rm event` |`remove event INDEX`   |`remove event 1`   |Removes event at index 1
 |`remove task`  |`rm task`  |`remove task INDEX`    |`remove task 1`    |Removes task at index 1
+|`select event` |[[empty]]  |`select event INDEX`   |`select event 1`  |Select event at index 1
+|`select task`  |[[empty]]  |`select task INDEX`    |`select task 1`  |Select task at index 1
 |`task`         |[[empty]]  |`task n/NAME d/DUE_DATE_TIME [r/REMARK] [t/TAGS]`|`task n/Software Engineering Milestone 1 d/16/03/2018 17:00 r/urgent`|Adds a task to Desk Board
 |`undo`         |`u`        |`undo`                 |[[empty]]          |Reverses the most recent undoable command

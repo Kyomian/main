@@ -860,6 +860,62 @@ If `ListCommand` is successful:
 {empty} +
 {empty} +
 
+// tag::select[]
+===== Selecting a task or event
+`Task` objects can be selected through the use of the `SelectCommand` by specifying the `Task`'s or `Event`'s index reflected
+in the GUI.
+
+Below is a snippet of how the `execute()` of `SelectCommand` that select the specified activity.
+The code make use the `JumpToEventListRequestEvent` or `JumpToTaskListRequestEvent` to inform the GUI to select the specified `Task` or `Event`.
+
+[source,java]n
+----
+    public CommandResult execute() throws CommandException {
+        CommandResult result = null;
+        if (type.equalsIgnoreCase(TYPE_TASK)) {
+            List<Activity> lastShownList = model.getFilteredTaskList();
+
+            if (targetIndex.getZeroBased() >= lastShownList.size()) {
+                throw new CommandException(Messages.MESSAGE_INVALID_ACTIVITY_DISPLAYED_INDEX);
+            }
+
+            EventsCenter.getInstance().post(new JumpToTaskListRequestEvent(targetIndex));
+            result = new CommandResult(String.format(MESSAGE_SELECT_ACTIVITY_SUCCESS, targetIndex.getOneBased()));
+        } else if (type.equalsIgnoreCase(TYPE_EVENT)) {
+            List<Activity> lastShownList = model.getFilteredEventList();
+
+            if (targetIndex.getZeroBased() >= lastShownList.size()) {
+                throw new CommandException(Messages.MESSAGE_INVALID_ACTIVITY_DISPLAYED_INDEX);
+            }
+
+            EventsCenter.getInstance().post(new JumpToEventListRequestEvent(targetIndex));
+            result = new CommandResult(String.format(MESSAGE_SELECT_ACTIVITY_SUCCESS, targetIndex.getOneBased()));
+        } else {
+            assert false : "Type is neither task or event, this should not happened!";
+        }
+        return result;
+    }
+----
+
+
+//end::select[]
+{empty} +
+
+==== Overdue
+
+Overdue tasks can be viewed through the use of the `OverdueCommand`. Note that the `OverdueCommand` only
+lists down overdue tasks; overdue events are marked as completed automatically.
+
+`OverdueCommand` makes use of the `LocalDateTime` class in Java to check if an ongoing task becomes overdue
+or not.
+
+There will be a class in the `Model` component, which has access to the `UniqueActivityList` class in that
+component. The class will go through the `UniqueActivityList` and obtain the `dueDateTime` of `Task`, and the `end
+DateTime` of `Event`. It will then perform a check of the `DateTime` with `LocalDateTime.now()`. If a `Task` is overdue, it will be marked so in the GUI.
+If the current date and time is past an `Event` `s `endDateTime`, the `Event` will be marked as completed.
+{empty} +
+{empty} +
+
 ==== Design considerations
 
 This section describes various design considerations related to the GUI features. For each aspect, we will discuss the 2 alternatives considered and the pros and cons for each alternative.
